@@ -29,7 +29,7 @@ mode 1,8
 ' open the wii classic controller
 wii classic open 3
 
-
+page write 1
 
 ' here's the starting values (puts the object in the center of the screen to start
 dim float tx = MM.HRES/2
@@ -144,11 +144,11 @@ do
   if(buttons and buttonhome) then
     keeprunning=0 ' quit
   endif  
-
-  pause 50
   
+  pause 50
+  page copy 1 to 0
   cls
 loop until keeprunning=0
-
+page write 0
 'close the connection to the game pad
 wii classic close 3
