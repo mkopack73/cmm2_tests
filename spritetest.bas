@@ -42,20 +42,40 @@ for i = 0 to 12 step 2
   next
 next
 
-' load the player's car sprite
-sprite loadpng 1,"CarBlue.png"
-' load the AI car sprite
-sprite loadpng 2,"CarRed.png"
+' get the x position for the lanes so we know where to position the AI cars
+dim integer lanes (10) = (208,246,286,326,363,409,445,486,526,565)
+dim integer aicars(2,4) '(lane#, speed, yposition, active)
+
+dim integer templane =0 ' used in AI calcs to hold the lane #
+dim integer ytemp = 0 ' used in AI calcs to hold the y position
+
+' ok let's load in the sprites. We need to resize them to fit the lanes.
+' switch over to a temp page
+page write 2
+box 200,0,35,50,,RGB(255,255,255),0
+load png "CarBlue.png",0,0,15
+image resize 2,2,80,120,200,0,30,45
+sprite read 1,200,0,30,45,2
+
+box 200,0,35,50,,RGB(255,255,255),0
+load png "CarRed.png",0,0,15
+image resize 2,2,80,120,200,0,30,45
+sprite read 2,200,0,30,45,2
+' ok clear the screen that we loaded the sprites from
+cls
+
+page write 1
 ' put the player on layer 1 so it doesn't collide with the lane lines.
-sprite show 1,560,400,1
-sprite show 2,260,400,1
+' and start it in the rightmost lane
+sprite show 1,lanes(10),400,1
+sprite copy 2,3,1 ' copy the AI car to sprite 3, 1 copy.
 
 ' set up the function to handle collisions
 sprite interrupt collision
 
 
 
-
+let drag = 1 'how much to slow the player's car down if they don't give it gas
 
 let keeprunning = 1 ' to keep the "game" running
 let currenttime = 0 ' holds the current time at the start of the cycle
@@ -66,11 +86,15 @@ dim integer targettimeperframe = 1000/30 'target 30 frames per second
 let score = 0 ' this will count how many many frames * speed per frame the player has covered before collision.
 
 let playerspeed = 0 ' the faster our speed, the farther down we draw the dashed lines each frame
-let playerx = 410 ' the x position of the the player's car
+let playerx = lanes(10) ' the x position of the the player's car
 LET leftstickx = 0 
 LET rightsticky = 0 
 dim integer changex = 0
 dim integer changey = 0
+
+dim integer soundfreq = 15 'this changes with the speed
+
+
 ' main rendering/game loop
 do while keeprunning
   timer=0
@@ -94,8 +118,15 @@ do while keeprunning
   ' this should adjust the speed
   if(rightsticky>140) then playerspeed = playerspeed +1
   if(rightsticky<100) then playerspeed = playerspeed -1
+  if(rightsticky<=140 and rightsticky>=100) then playerspeed =playerspeed - drag
   if(playerspeed < 0) then playerspeed = 0
   if(playerspeed > 15) then playerspeed = 15
+
+  'adjust the engine sound based on the speed
+  if (playerspeed+20) <> soundfreq then
+    soundfreq=playerspeed+20
+    play sound 1, b, w, soundfreq,25
+  endif
   
   ' this SHOULD make it so the farther left/right you push the more it will change
   changex = (leftstickx-127) / 64
@@ -107,6 +138,10 @@ do while keeprunning
   ' make sure it stays within the limits while still allowing off-sides of the road a bit.
   if(playerx < 100) then playerx = 100
   if(playerx > 700) then playerx = 700 
+
+  ' update the ai cars
+  handleai()
+
   
   ' see if the player hit the home button to quit
   buttons = classic(B,3)
@@ -141,17 +176,87 @@ do while keeprunning
   page copy 1 to 0
   if(delay>0) then pause delay
 loop
+
+'end game
+sprite close all
+
 page write 0
-pause 10
+play stop
+
+pause 100
 cls RGB(0,0,0)
+
 print "We missed :"+str$(missedframes)+" frames during run..."
 print "Final score: "+STR$(score)
 
 ' define what to do when there's a collision between sprites
 sub collision()
-  keeprunning=false
-  sprite nointerrupt
-  sprite hide 1
-  sprite hide 2  
-  sprite close all
+  local integer i
+  if(sprite(S)<>0) then
+    process_collision(sprite(S))
+  else
+    for i=1 to sprite(C,0)
+      process_collision(sprite(C,0,i))
+    next i
+  endif
 End sub
+
+
+' handle determining the collision
+sub process_collision(S as integer)
+  local integer i,j
+  for i = 1 to sprite(C,S)
+    j=sprite(C,S,i)
+    ' see if it's a collision between player's car and AI car
+    if((S=1 and j>=2 and j<=3) or (S>=2 and S<=3 and j=1)) then
+      keeprunning=0
+'    print "Collision with sprites ", S,j
+    endif
+  next i
+end sub
+
+' figure out what the ai cars should do
+sub handleai()
+  for i=1 to 2
+    ' for each car, see if it's active
+    if(aicars(i,4)=1) then
+      ' it's active so we need to move it, 
+      ' it's yposition should move relative to the player's speed and it's own speed
+      if(aicars(i,1) > 5) then 
+        aicars(i,3) = -1*aicars(i,2)+playerspeed+aicars(i,3)
+      else 
+        aicars(i,3) = aicars(i,2)+playerspeed+aicars(i,3) ' left lanes should always come towards you
+      endif
+      'update it's position
+      'if it's offscreen high, don't draw it more than 1 sprite's worth above
+      templane = aicars(i,1)
+      'if it's below bottom, hide it and make it inactive
+      if(aicars(i,3) > MM.VRES-1) then 
+        sprite hide i+1
+        aicars(i,4)=0
+      else if(aicars(i,3) < -44) then 
+        sprite next i+1,lanes(templane),-44 
+      else 
+        sprite next i+1,lanes(templane),aicars(i,3)
+      endif
+    else
+      ' if it's inactive, randomly decide if it should show up and where
+      if((RND)>.9) then 
+        'pick a lane
+        aicars(i,1) = int(rnd*10)+1
+        'pick a speed
+        aicars(i,2) = int(rnd*12)+1
+        'start it at y=-100
+        aicars(i,3) = -44 ' can't set it more than 1 sprite's size off screen
+        aicars(i,4) = 1 ' make it active
+        'now set the sprite depending on the lane
+        templane = aicars(i,1)
+        if(aicars(i,1)<6) then
+          sprite show i+1,lanes(templane),aicars(i,3),1,3
+        else
+          sprite show i+1,lanes(templane),aicars(i,3),1,0
+        endif
+      endif
+    endif
+  next  
+end sub
