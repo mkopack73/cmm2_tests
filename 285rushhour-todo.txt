@@ -1,0 +1,16 @@
+285 rush hour todo list:
+
+* handle keyboard input
+* splash screen and intro music
+* request input type
+* score and stopwatch
+* high score chart in sequential file
+* AI cars slow down when come in behind other cars in same lane
+* Vary the AI cars
+* Increase number of AI cars
+* overpasses
+* overhead map
+* obstacles
+* different size AI vehicles
+* rain
+* night
