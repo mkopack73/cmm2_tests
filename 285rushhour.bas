@@ -99,7 +99,7 @@
     if(delay<0) then missedframes = missedframes+1
     text 10, 14, str$(delay), LB,,, RGB(255,255,255)
     
-    updatescore()
+'    updatescore()
     'updatemap() ' eventually add this in so we can update the overhead map to show progress
     
     ' copy the back buffer to the front display
@@ -144,28 +144,37 @@ end sub
   
   ' figure out what the ai cars should do
 sub handleai()
+  local x=0
+  local y=0
+  local carheight=0
+  local orientation=0
+  local type=0
+  local col=0
+  local sprnum =0  
   local integer lanefound =0 ' used to indicate if we've found a valid lane with room
   local integer templane =0 ' used in AI calcs to hold the lane #
   local integer othercarinlane=0 ' flag if we found another car in the lane that we need to slow down for
   for i=1 to numcars
+    sprnum=i+1
     ' for each car, see if it's active
     if(aicars(i,4)=1) then
       ' it's active so we need to move it,
       ' it's yposition should move relative to the player's speed and it's own speed
       othercarinlane=0
-      'see if there's another car in this lane with a lower y and within 1.5 car lenghts of this AI car
+      'see if there's another car in this lane ahead of this one and within 1.5 car lengths of this AI car
+      
       for car = 1 to numcars
         'see if it's a different car, it's active, in the same lane, and it's y+1.5*height of the car is < this car and has a > speed than the car above it
         if(i<>car and aicars(car,4)=1 and aicars(car,1) = aicars(i,1)) then
           ' deal with the cars depending upon which side of the road they're on
           if(aicars(i,1) > 5) then
-            if (aicars(car,3)+carheight+aicars(i,2))<aicars(i,3) and aicars(car,2)<=aicars(i,2) ) then
+            if (aicars(car,3)+(sprite(H,car+1)*1.5)+aicars(i,2))<aicars(i,3) and aicars(car,2)<=aicars(i,2) ) then
               'make this car match the ahead car's speed.
               aicars(i,2) = aicars(car,2)
               othercarinlane=1
             endif
           else
-            if(aicars(car,3)<aicars(i,3)+carheight+aicars(i,2) and aicars(car,2)<aicars(i,2) ) then
+            if(aicars(car,3)<aicars(i,3)+(sprite(H,car+1)*1.5)+aicars(i,2) and aicars(car,2)<aicars(i,2) ) then
               'make this car match the ahead car's speed.
               aicars(i,2) = aicars(car,2)
               othercarinlane=1
@@ -187,16 +196,16 @@ sub handleai()
       templane = aicars(i,1)
       'if it's below bottom, hide it and make it inactive
       if(aicars(i,3) > MM.VRES-1) then
-        sprite hide i+1
-        sprite close i+1
+        sprite hide sprnum
+        sprite close sprnum
         aicars(i,4)=0
-      else if(aicars(i,3) < -1*SPRITE(H,i+1)) then
+      else if(aicars(i,3) <= -1*SPRITE(H,sprnum)) then
         ' if it goes off the top of the screen, we have to not move the sprite any farther, but keep track of
         ' how far up the road it HAS moved.
-        ' NOTE this will need to be changed because bigger cars will be longer than 44 pixels.
-        sprite next i+1,lanes(templane),-1*sprite(H,i+1)
+        ' sprite height pixels.
+        sprite next sprnum,lanes(templane),-1*sprite(H,sprnum)+1
       else
-        sprite next i+1,lanes(templane),aicars(i,3)
+        sprite next sprnum,lanes(templane),aicars(i,3)
       endif
     else
       ' if it's inactive, randomly decide if it should show up and where
@@ -207,13 +216,14 @@ sub handleai()
         templane = int(rnd*10)+1
         'see if any other cars are in that lane, active and within 1 car length. If so, retry
         for car=1 to numcars
-          if(aicars(car,1)=templane) then
-            'see if there's a car within the spawn area, if not, then this lane is ok
-            if (aicars(car,3)>40) then
+          if(aicars(car,4)=1 and aicars(car,1)=templane) then
+            'see if the car below the spawn area, if so, then this lane is ok
+            if (aicars(car,3)>60) then
               lanefound=1
             else
               ' otherwise it's no good
               lanefound=0
+              exit for 
             endif
           endif
         next car
@@ -222,16 +232,13 @@ sub handleai()
           aicars(i,1) = templane
           'pick a speed
           aicars(i,2) = int(rnd*12)+1
-          'start it at y=-100
-          ' TODO: This will have to change once we have different length cars
-          aicars(i,3) = -1*sprite(H,i+1) ' can't set it more than 1 sprite's size off screen
           aicars(i,4) = 1 ' make it active
           
           'pick a color and type of AI car
-          local type = rnd*5+1
-          local col = rnd*5+1
-          local carheight=0
-          local orientation=0
+          type = int(rnd*5)+1 ' type by row
+          col = int(rnd*5)+1 ' color by column 
+          carheight=0
+          orientation=0
           ' copy the sprite in from the sprite page (page 2)
           select case type
             case 1
@@ -245,16 +252,21 @@ sub handleai()
             case 5
               carheight= 61
           end select
-          
+          'left lane cars need to be rotated 180
           if(aicars(i,1)<6) then
             orientation=3
           else
             orientation=0
           endif
-          sprite read i+1, col*70, type*80, 35,carheight,2
+          'copy the randomly selected graphics from page 2 where we loaded them into the sprite
+          sprite read sprnum, col*70, type*80, 35,carheight,2
           'now set the sprite depending on the lane
           templane = aicars(i,1)
-          sprite show i+1,lanes(templane),aicars(i,3),2,orientation
+          aicars(i,3) = (-1*carheight)+1 ' can't set it more than 1 sprite's size off screen
+          ' show the sprite 
+          x=lanes(templane)
+          y=aicars(i,3)
+          sprite show sprnum,x,y,2,orientation
         endif
       endif
     endif
@@ -297,12 +309,10 @@ SUB loadsprites()
   ' ok let's load in the sprites. We need to resize them to fit the lanes.
   ' switch over to a temp page
   page write 2
-  'box 200,0,35,50,,RGB(255,255,255),0
   load png "CarBlue.png",0,0,15
   image resize 2,2,80,120,200,0,30,45
   sprite read 1,200,0,30,45,2
   
-  'box 200,0,35,50,,RGB(255,255,255),0
 '  load png "CarRed.png",0,0,15
 '  image resize 2,2,80,120,200,0,30,45
 '  sprite read 2,200,0,30,45,2
@@ -311,9 +321,9 @@ SUB loadsprites()
   sprite show 1,lanes(10),400,2
   'sprite copy 2,3,(numcars-1) ' copy the AI car to sprite 3, numcars-1 copy.
 
+  ' ok clear that page so we can load in the 25 PNGs for the AI cars
   cls rgb(0,0,0)
-  ' load in the 25 different car PNG's onto page 3
-  local counter=1
+  ' load in the 25 different car PNG's onto page 2
   local col$ = ""
   for i = 1 to 5
     for j = 1 to 5
@@ -329,15 +339,13 @@ SUB loadsprites()
         case 5
           col$="yellow"
       end select
-
       load png "A:Cars/car_"+col$+"_small_"+str$(i), j*70,i*80
-'      print "Loaded: ";"A:Cars/car_"+col$+"_small_"+str$(i)
-      
-      counter=counter+1
     next
   next
+  'let's show it so we know they all got loaded ok
   page copy 2 to 0  
-  
+  pause 2000
+    
   ' set up to make the overpass in page 3
   page write 3
   ' ok clear the screen that we loaded the sprites from
@@ -357,6 +365,7 @@ SUB loadsprites()
 '  page copy 3 to 0  
   ' switch back to page 1 so we can get things into the drawing page
   page write 1
+
   
   ' set up the function to handle collisions
   sprite interrupt collision
