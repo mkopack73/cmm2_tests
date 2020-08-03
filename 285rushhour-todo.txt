@@ -1,16 +1,36 @@
 285 rush hour todo list:
 
-* handle keyboard input
-* splash screen and intro music
-* request input type
+* splash screen and intro music - have music now
+* request input type on intro screen 
 * score and stopwatch
 * high score chart in sequential file
-* AI cars slow down when come in behind other cars in same lane
-* Vary the AI cars
+* AI cars slow down when come in behind other cars in same lane -sort of. still problems
+* Vary the AI cars - done
 * Increase number of AI cars
-* overpasses
+* overpasses - tried as sprite but WAYYYYY too slow, and causes collisions even though in different layer
 * overhead map
 * obstacles
-* different size AI vehicles
+* different size AI vehicles - working
 * rain
 * night
+
+
+
+TEST PROGRAMS to WRITE:
+
+* File interactions for High Score system - maybe make this an include
+	- have options for: integer score, time score, larger=better or lower=better
+	- display HS
+	- capture and save HS
+
+* multi-playfield background movement test
+
+* sprite-sprite collision detection and overlay (the angles between them)
+	- load in 2 sprites, set 1 in the middle of the screen, other is one I can control with JS
+	- on collision, show the angle between them.
+
+
+
+
+
+
