@@ -113,7 +113,6 @@ function checkishigh (score as integer)
     next
   else
     for i=1 to 10
-print "Comparing "+str$(score)+" to "+hs_scores(i,2)
       if(val(hs_scores(i,2))=0 or score<=val(hs_scores(i,2))) then
         retval=i
         exit for
