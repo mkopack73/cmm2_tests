@@ -4,8 +4,8 @@
 
 #include "stdsettings.inc"
   
-option base 1
 Mode 1,8
+
 
   
 ' set up some variables that we need to be global since they are used in different places.
@@ -22,42 +22,66 @@ Let delay = 0 ' holds the delay remaining at the end of the cycle that we need t
 dim integer targettimeperframe = 1000/30 'target 30 frames per second
 
 let freetime=0 ' total free time for 1000 frames moving at 15 lines per frame
-
+let firsttime=0
+let secondtime=0
 let playerspeed = 15 ' the faster our speed, the farther down we draw the dashed lines each frame
 
+' setup all the sprites we need.
+
+loadsprites()
 ' Get the game screen set up
-  setuproad()
-  ' setup all the sprites we need.
-  loadsprites()
-  
+setuproad()
   'initialize the start time so we can keep a stopwatch of the run
   starttime=time
-  
+  page write 1  
   ' main rendering/game loop
-  do while keeprunning <=15000
+  do while keeprunning <=1000
     timer=0
-    
-    
-    'update the road
     updateroad()
     
-    ' ok, now call the command that makes all the sprites actually move at once to their new positions.
     sprite move
-    
-    'if we are done before the targettime per frame, wait the difference
-    ' if this comes out negative it'll just immediately cycle to the next
-    ' iteration (but that means we're not keeping up)
     delay = targettimeperframe-TIMER
     freetime=freetime+delay
-    
-    ' copy the back buffer to the front display
+    keeprunning=keeprunning+1
     page copy 1 to 0
     if(delay>0) then pause delay
   loop
-
+  firsttime= freetime
   
-  print "total free time for 1000 frames of 15 scrolls = ";freetime
-end
+  ' close all sprites
+  sprite close all
+  'set up the background
+  setuproad()  
+  loadsprites()
+
+  freetime=0
+  currenttime=0
+  keeprunning=0
+  page write 1
+  ' main rendering/game loop
+  do while keeprunning <=1000
+    timer=0
+    sprite hide 1
+    updateroad2()
+    sprite show 1,lanes(10),400,1
+    delay = targettimeperframe-TIMER
+    freetime=freetime+delay
+    keeprunning=keeprunning+1
+    page copy 1 to 0
+   
+    sprite move
+    
+    if(delay>0) then pause delay
+  loop
+  page write 0  
+  cls rgb(0,0,0)
+  secondtime= freetime
+    
+
+  print "total free time using sprites = ";firsttime
+  print "total free time using background = ";secondtime
+
+
 
   '--------------------------------------------------------------------
   
@@ -94,30 +118,10 @@ end sub
 
 sub setuproad()
   'set up so we write to the background buffer
+
   page write 1
-  
-  ' First, clear the screen...
-  cls RGB(0,255,0)
-  ' draw the road
-  ' the street surface will be gray
-  BOX 200, 0, 400, 600,,rgb(128,128,128),1
-  ' draw the lines on the edges of the road solid white
-  line 205,0, 205,600, 3, RGB(255,255,255)
-  Line 595,0,595,600,3,RGB(255,255,255)
-  ' draw the double centerline in yellow
-  Line 394,0, 394,600,3,RGB(128,128,0)
-  line 406,0, 406,600,3,RGB(128,128,0)
-  ' the lane lines will be done with sprites so we can make them roll down the screen as the player
-  ' move
-  
-  ' we first draw the dashed lines
-  for i = 0 to 12 step 2
-    for j = 1 to 4
-      Line 200+(j*40), 50*i, 200+(j*40), 50*(i+1), 3, RGB(255,255,255)
-      line 400+(j*40), 50*i, 400+(j*40), 50*(i+1), 3, RGB(255,255,255)
-    next
-  next
-  
+  load bmp "roadway.bmp",0,0
+  page copy 1 to 0
 end sub
   '--------------------------------------------------------------------
 
@@ -126,11 +130,14 @@ SUB loadsprites()
   ' ok let's load in the sprites. We need to resize them to fit the lanes.
   ' switch over to a temp page
   page write 2
+  cls black
   load png "CarBlue.png",0,0,15
-  image resize 2,2,80,120,200,0,30,45
-  sprite read 1,200,0,30,45,2
-  
-  page write 1
+  image resize 2,2,80,120,200,0,30,62
+  sprite read 1,200,0,30,62,2
+  cls
+  page write 0
+  sprite show 1,lanes(10),400,1
+  cls
   ' set up the function to handle collisions
   sprite interrupt collision
 END SUB
@@ -139,8 +146,21 @@ END SUB
 
 SUB updateroad()
   ' scroll the layer lines according to the players' speed
+'  page write 1
+  local y=-1*playerspeed
   for i =0 to 3
-    sprite scrollr 238+(i*40),0,5,MM.VRes,0,-1*playerspeed
-    sprite scrollr 438+(i*40),0,5,MM.VRes,0,-1*playerspeed
+    sprite scrollr 238+(i*40),0,5,MM.VRes,0,y
+    sprite scrollr 438+(i*40),0,5,MM.VRes,0,y
   next
 End sub
+
+
+sub updateroad2()
+'  page write 1
+'  sprite hide 1
+  local y=-1*playerspeed
+  sprite scroll 0,y
+'  sprite show 1,lanes(10),400,1
+'  page scroll 1,0,y
+end sub
+

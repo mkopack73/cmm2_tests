@@ -25,10 +25,9 @@ TEST PROGRAMS to WRITE:
 
 * multi-playfield background movement test
 
-* sprite-sprite collision detection and overlay (the angles between them)
-	- load in 2 sprites, set 1 in the middle of the screen, other is one I can control with JS
-	- on collision, show the angle between them.
+* try doing overpasses as an ADD of the pages after the sprites are added to page 2.
 
+* sprite-sprite collision detection and overlay (the angles between them)
 
 
 

@@ -13,10 +13,34 @@ wii classic open 3
 
 Mode 1,8
 
+'set up so we write to the background buffer
+page write 1
 
 ' All this stuff will remain static so we do it outside the loop to reduce
 ' how much we do during the main loop.
 
+
+' First, clear the screen... 
+cls RGB(0,255,0)
+' draw the road
+' the street surface will be gray
+BOX 200, 0, 400, 600,,rgb(128,128,128),1
+' draw the lines on the edges of the road solid white
+line 205,0, 205,600, 3, RGB(255,255,255)
+Line 595,0,595,600,3,RGB(255,255,255)
+' draw the double centerline in yellow
+Line 394,0, 394,600,3,RGB(128,128,0)
+line 406,0, 406,600,3,RGB(128,128,0)
+' the lane lines will be done with sprites so we can make them roll down the screen as the player
+' move
+
+' we first draw the dashed lines
+for i = 0 to 12 step 2
+  for j = 1 to 4
+    Line 200+(j*40), 50*i, 200+(j*40), 50*(i+1), 3, RGB(255,255,255)
+    line 400+(j*40), 50*i, 400+(j*40), 50*(i+1), 3, RGB(255,255,255)
+  next
+next
 
 ' get the x position for the lanes so we know where to position the AI cars
 const numcars=10
@@ -25,6 +49,30 @@ dim integer aicars(numcars,4) '(lane#, speed, yposition, active)
 
 dim integer templane =0 ' used in AI calcs to hold the lane #
 dim integer ytemp = 0 ' used in AI calcs to hold the y position
+
+' ok let's load in the sprites. We need to resize them to fit the lanes.
+' switch over to a temp page
+page write 2
+box 200,0,35,50,,RGB(255,255,255),0
+load png "CarBlue.png",0,0,15
+image resize 2,2,80,120,200,0,30,45
+sprite read 1,200,0,30,45,2
+
+box 200,0,35,50,,RGB(255,255,255),0
+load png "CarRed.png",0,0,15
+image resize 2,2,80,120,200,0,30,45
+sprite read 2,200,0,30,45,2
+' ok clear the screen that we loaded the sprites from
+cls
+
+page write 1
+' put the player on layer 1 so it doesn't collide with the lane lines.
+' and start it in the rightmost lane
+sprite show 1,lanes(10),400,1
+sprite copy 2,3,(numcars-1) ' copy the AI car to sprite 3, numcars-1 copy.
+
+' set up the function to handle collisions
+sprite interrupt collision
 
 
 
@@ -47,11 +95,6 @@ dim integer changey = 0
 
 dim integer soundfreq = 15 'this changes with the speed
 
-' Get the game screen set up
-setuproad()
-
-' setup all the sprites we need.
-loadsprites()
 
 ' main rendering/game loop
 do while keeprunning
@@ -59,15 +102,56 @@ do while keeprunning
   
   ' draw the screen and any display updates
   ' draw the player's sprite at the new location
+  
+  ' scroll the layer lines according to the players' speed
+  for i =0 to 3
+    sprite scrollr 238+(i*40),0,5,MM.VRes,0,-1*playerspeed
+    sprite scrollr 438+(i*40),0,5,MM.VRes,0,-1*playerspeed
+  next
 
-  'update the road
-  updateroad()
+  ' read the joystick and update the game state
+  ' get the left/right
+  leftstickx = CLASSIC(LX,3)
+  ' get the throttle changes
+  rightsticky = CLASSIC(RY,3)
+  
 
-  ' handle input from the user
-  handleinput()
+  ' this should adjust the speed
+  if(rightsticky>140) then playerspeed = playerspeed +1
+  if(rightsticky<100) then playerspeed = playerspeed -1
+  if(rightsticky<=140 and rightsticky>=100) then playerspeed =playerspeed - drag
+  if(playerspeed < 0) then playerspeed = 0
+  if(playerspeed > 15) then playerspeed = 15
+
+  'adjust the engine sound based on the speed
+  if (playerspeed+20) <> soundfreq then
+    soundfreq=playerspeed+20
+    play sound 1, b, w, soundfreq,25
+  endif
+  
+  ' this SHOULD make it so the farther left/right you push the more it will change
+  changex = (leftstickx-127) / 64
+  
+  ' make it so you can't steer unless moving
+  if(playerspeed=0) then changex =0
+
+  playerx = playerx + changex
+  ' make sure it stays within the limits while still allowing off-sides of the road a bit.
+  if(playerx < 100) then playerx = 100
+  if(playerx > 700) then playerx = 700 
+
   ' update the ai cars
   handleai()
 
+  
+  ' see if the player hit the home button to quit
+  buttons = classic(B,3)
+  if(buttons and 4) then keeprunning = 0 
+  
+  ' update the positions of the sprites based on the player's movement
+  sprite next 1, playerx,400 
+  
+  
   ' ok, now call the command that makes all the sprites actually move at once to their new positions.
   sprite move
   
@@ -94,8 +178,17 @@ do while keeprunning
   if(delay>0) then pause delay
 loop
 
-endgame()
+'end game
+sprite close all
 
+page write 0
+play stop
+
+pause 100
+cls RGB(0,0,0)
+
+print "We missed :"+str$(missedframes)+" frames during run..."
+print "Final score: "+STR$(score)
 
 ' define what to do when there's a collision between sprites
 sub collision()
@@ -168,133 +261,4 @@ sub handleai()
       endif
     endif
   next i 
-end sub
-
-
-sub setuproad()
-  'set up so we write to the background buffer
-  page write 1
-
-  ' First, clear the screen... 
-  cls RGB(0,255,0)
-  ' draw the road
-  ' the street surface will be gray
-  BOX 200, 0, 400, 600,,rgb(128,128,128),1
-  ' draw the lines on the edges of the road solid white
-  line 205,0, 205,600, 3, RGB(255,255,255)
-  Line 595,0,595,600,3,RGB(255,255,255)
-  ' draw the double centerline in yellow
-  Line 394,0, 394,600,3,RGB(128,128,0)
-  line 406,0, 406,600,3,RGB(128,128,0)
-  ' the lane lines will be done with sprites so we can make them roll down the screen as the player
-  ' move
-
-  ' we first draw the dashed lines
-  for i = 0 to 12 step 2
-    for j = 1 to 4
-      Line 200+(j*40), 50*i, 200+(j*40), 50*(i+1), 3, RGB(255,255,255)
-      line 400+(j*40), 50*i, 400+(j*40), 50*(i+1), 3, RGB(255,255,255)
-    next
-  next
-
-end sub
-
-
-SUB loadsprites()
-  ' ok let's load in the sprites. We need to resize them to fit the lanes.
-  ' switch over to a temp page
-  page write 2
-  box 200,0,35,50,,RGB(255,255,255),0
-  load png "CarBlue.png",0,0,15
-  image resize 2,2,80,120,200,0,30,45
-  sprite read 1,200,0,30,45,2
-
-  box 200,0,35,50,,RGB(255,255,255),0
-  load png "CarRed.png",0,0,15
-  image resize 2,2,80,120,200,0,30,45
-  sprite read 2,200,0,30,45,2
-  ' ok clear the screen that we loaded the sprites from
-  cls
-
-  page write 1
-  ' put the player on layer 1 so it doesn't collide with the lane lines.
-  ' and start it in the rightmost lane
-  sprite show 1,lanes(10),400,1
-  sprite copy 2,3,(numcars-1) ' copy the AI car to sprite 3, numcars-1 copy.
-
-  ' set up the function to handle collisions
-  sprite interrupt collision
-END SUB
-
-
-
-sub handleinput()
-  ' read the joystick and update the game state
-  ' get the left/right
-  leftstickx = CLASSIC(LX,3)
-  ' get the throttle changes
-  rightsticky = CLASSIC(RY,3)
-  
-
-  ' this should adjust the speed
-  if(rightsticky>140) then playerspeed = playerspeed +1
-  if(rightsticky<100) then playerspeed = playerspeed -1
-  if(rightsticky<=140 and rightsticky>=100) then playerspeed =playerspeed - drag
-  if(playerspeed < 0) then playerspeed = 0
-  if(playerspeed > 15) then playerspeed = 15
-
-  'adjust the engine sound based on the speed
-  if (playerspeed+20) <> soundfreq then
-    soundfreq=playerspeed+20
-    play sound 1, b, w, soundfreq,25
-  endif
-  
-  ' this SHOULD make it so the farther left/right you push the more it will change
-  changex = (leftstickx-127) / 64
-  
-  ' make it so you can't steer unless moving
-  if(playerspeed=0) then changex =0
-
-  playerx = playerx + changex
-  ' make sure it stays within the limits while still allowing off-sides of the road a bit.
-  if(playerx < 100) then playerx = 100
-  if(playerx > 700) then playerx = 700 
-
-  ' see if the player hit the home button to quit
-  buttons = classic(B,3)
-  if(buttons and 4) then keeprunning = 0 
-
-  
-  ' update the positions of the player's sprite based on the player's movement
-  sprite next 1, playerx,400 
-
-
-END SUB
-
-
-
-SUB updateroad()
-  ' scroll the layer lines according to the players' speed
-  for i =0 to 3
-    sprite scrollr 238+(i*40),0,5,MM.VRes,0,-1*playerspeed
-    sprite scrollr 438+(i*40),0,5,MM.VRes,0,-1*playerspeed
-  next
-End sub
-
-
-SUB endgame()
-  'end game
-  ' close out all the sprites
-  sprite close all
-  ' change to the 0 page
-  page write 0
-  ' stop all sound
-  play stop
-  ' give the system a chance to catch up
-  pause 100
-  'clear the screen
-  cls RGB(0,0,0)
-  ' output diag info and final score...
-  print "We missed :"+str$(missedframes)+" frames during run..."
-  print "Final score: "+STR$(score)
 end sub
