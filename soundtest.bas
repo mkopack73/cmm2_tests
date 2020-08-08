@@ -15,4 +15,13 @@ pause 4000
 
 play stop
 
+' these two can not be done at the same time as a mod file playing in the background.
+PLAY TONE 15,15,1000
 
+pause 4000
+
+PLAY SOUND 1,B,W,15,25
+
+pause 2000
+
+play stop

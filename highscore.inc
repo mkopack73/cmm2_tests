@@ -60,7 +60,6 @@ end sub
 sub displayscores ()
   local width = MM.HRES
   local height = MM.VRES
-  hs_color = col
   local as integer lineheight = MM.info(FONTHEIGHT) 
   local as integer tscore
 
@@ -72,11 +71,11 @@ sub displayscores ()
   local as string tstr
       
       
-  text MM.HRES/2, 10, "HIGH SCORES","CM"
+  text MM.HRES/2, 10, "HIGH SCORES","CM",,-1
   for i=1 to 10
-    text MM.HRES/4,lineheight*2+(lineheight*i)+2,hs_scores(i,1),"CM"
+    text MM.HRES/4,lineheight*2+(lineheight*i)+2,hs_scores(i,1),"CM",,-1
     if(hs_scoretype=0) then
-      text mm.HRES*3/4, lineheight*2+(lineheight*i)+2,hs_scores(i,2),"CM"
+      text mm.HRES*3/4, lineheight*2+(lineheight*i)+2,hs_scores(i,2),"CM",,-1
     else
       ' it's a time based score so we need to parse things
       if(hs_scores(i,2) ="") then
@@ -91,7 +90,7 @@ sub displayscores ()
       tmin = tscore - (tscore/60)
       thour = tscore / 60
       tstr = str$(thour,5,0,"0")+":"+str$(tmin,2,0,"0")+":"+str$(tsec,2,0,"0")+"."+STR$(tpartial,2,0,"0")
-      text mm.HRES*3/4, lineheight*2+(lineheight*i)+2,tstr,"CM"
+      text mm.HRES*3/4, lineheight*2+(lineheight*i)+2,tstr,"CM",,-1
     endif
   next
   
@@ -136,9 +135,9 @@ sub capturename (score as string, position as integer)
   local center = MM.VRES / 2
 
   local lineheight = mm.info(FONTHEIGHT)
-  text MM.HRES/2, center-lineheight*3,"Congratulations!","CM"
-  text MM.HRES/2, center-lineheight,"A score of "+score+" puts you in "+str$(position)+" place.","CM"
-  text mm.HRES/2, center+lineheight, "Enter your name", "CM"
+  text MM.HRES/2, center-lineheight*3,"Congratulations!","CM",,-1
+  text MM.HRES/2, center-lineheight,"A score of "+score+" puts you in "+str$(position)+" place.","CM",,-1
+  text mm.HRES/2, center+lineheight, "Enter your name", "CM",,-1
   hs_name=""
   hs_hold=1
   on key hs_input()
@@ -169,12 +168,12 @@ sub hs_input()
         if (len(hs_name)>0) then
           hs_name=left$(hs_name,len(hs_name)-1)
         endif
-        text mm.hres/2, (mm.vres/2)+lineheight*3, hs_name, "CM"
+        text mm.hres/2, (mm.vres/2)+lineheight*3, hs_name, "CM",,-1
       case 10 ' enter
         hs_hold=0
       case else
         hs_name=hs_name+chr$(key)
-        text mm.hres/2,(mm.vres/2)+lineheight*3,hs_name,"CM"
+        text mm.hres/2,(mm.vres/2)+lineheight*3,hs_name,"CM",,-1
     end select
   end if
  end sub
@@ -193,7 +192,6 @@ sub testhsfunctions()
   page write 0
   cls
   local position = checkishigh(6000)
-print "Position=";position
   if(position>0) then
     capturename ("6000", position)
   endif
@@ -203,9 +201,13 @@ print "Position=";position
   page copy 1 to 0
   pause 3000
   page write 0
+  font 1,1
 end sub
 
 sub testhsfunctionstime()
+  mode 1,8
+  page write 1
+  cls black,BLUE
   loadhighscores("hs_timed.txt",1,0)
   font 2,2
   displayscores()
@@ -215,8 +217,6 @@ sub testhsfunctionstime()
   cls
   local as integer score = 1040
   local position = checkishigh(score)
-  print "Position = ";str$(position)
-
   if(position>0) then
     capturename(str$(score),position)
   endif
