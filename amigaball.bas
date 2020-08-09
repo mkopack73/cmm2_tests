@@ -6,11 +6,11 @@
   #include "stdsettings.inc"
   option explicit 1  
 
-  mode 1,8
-  const background = 1
+  mode 3,12
+  const background = 0
   CONST ballscreen = 2
   CONST mergescreen = 3
-  const displayscreen= 0
+  const displayscreen= 1
   CONST leftedge = MM.HRES/8
   CONST rightedge = MM.HRES-leftedge
   const topedge = MM.VRES/5
@@ -29,16 +29,16 @@
   dim as integer hspacing = MM.HRES/6*4/16
   dim i as integer
   for i = 0 to 16
-    line MM.HRES/6,MM.VRES/6+i*vspacing,5*MM.HRES/6,MM.VRES/6+i*vspacing,2,purple
-    LINE MM.HRES/6+i*hspacing,MM.VRES/6,MM.HRES/6+i*hspacing,5*MM.VRES/6,2,purple
+    line MM.HRES/6,MM.VRES/6+i*vspacing,5*MM.HRES/6,MM.VRES/6+i*vspacing,1,purple
+    LINE MM.HRES/6+i*hspacing,MM.VRES/6,MM.HRES/6+i*hspacing,5*MM.VRES/6,1,purple
   next
   
   'loop
   dim as integer delay = 0
   dim as integer x_pos = MM.HRES/2 'center of ball
   dim as integer y_pos = MM.VRES/2
-  dim as integer x_scroll = 2
-  dim as integer y_scroll = 2
+  dim as integer x_scroll = 1
+  dim as integer y_scroll = 1
   dim as integer adjusted_y_scroll=0
   dim as integer playsound = 0
 
@@ -63,7 +63,6 @@
     'drawball
     'page scroll the ball page
     'page scroll ballpage, hvelocity,0
-    page copy background to mergescreen
     drawball()
     
     'wait for the time window
@@ -71,7 +70,7 @@
     if delay>0 then
       pause delay
     end if
-    page copy mergescreen to displayscreen
+    page copy ballscreen to displayscreen
     if(playsound) then
       PLAY STOP
       play wav "energy-bounce-1.wav"
@@ -84,7 +83,7 @@
     end if
   loop
   
-  page write displayscreen
+  page write background
 end
   
   
@@ -120,7 +119,14 @@ sub drawball()
   end if
   
   ' draw the ball
-  page write mergescreen
+  page write ballscreen
+  cls
+
+
+'draw the shadow first so we can overwrite it with the ball when they overlap
+  circle x_pos+((bottomedge+(MM.HRES/10)-y_pos)/4),bottomedge+(MM.HRES/10),.5*MM.HRES/10,1,1.9,RGB(80,80,80,7),RGB(80,80,80,7)
+
+'draw the ball (opaque)
 if(colorcount=1) then
   circle x_pos,y_pos,MM.HRES/10,1,1,RED,RED
   circle x_pos,y_pos,MM.HRES/10,1,0.75,WHITE,WHITE
