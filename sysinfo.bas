@@ -8,7 +8,7 @@
 
 print "This machine is a "+MM.DEVICE$
 print "Running at "+str$((MM.INFO(CPUSPEED)/1000000))+" MHz"
-print "Firmware version "+str$(MM.INFO(VERSION))
+print "Firmware version "+str$(MM.INFO$(VERSION))
 print ""
 
 currentmode! = MM.INFO(MODE)
