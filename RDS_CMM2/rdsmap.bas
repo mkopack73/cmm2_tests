@@ -1,20 +1,37 @@
-  'CMM2 RDS Map
-  'using 0 indexed arrays (so 0-lastindex)
-  OPTION EXPLICIT
+'CMM2 RDS Map
+'using 0 indexed arrays (so 0-lastindex)
+OPTION EXPLICIT ON
+OPTION DEFAULT NONE  
   
+'define the global variables
   
-  'define the global variables
+dim hlm_width%=7  'how many cells wide is the track map (0-7)
+dim hlm_height%=7 'how many cells high is the track map (0-7)
   
-  dim hlm_width%=7  'how many cells wide is the high level track map (0-7)
-  dim hlm_height%=7 'how many cells high is the high level track map (0-7)
+' set up some names for the layers so they're easier to interact with
+const piecelayer%=0
+const rotationlayer%=1
+const surfacelayer%=2
+
+'set up constants for the different drawing pages so we can reference them by name
+const displaypage%=0
+const bufferpage%=1  ' this is where we build up the next frame
+const mappage%=2 ' this is where we build up the map
+const tilesetpage%=3 ' this holds the map tileset
+const carspritepage%=4 ' this holds the car sprites
+
+const tilesize%=80 'the height and width of each track tile piece
+
   
-  ' set up some names for the layers so they're easier to interact with
-  const piecelayer%=0
-  const surfacelayer%=1
-  
-  ' ok, this is a 3d array that holds the track tile type in the piecelayer and the surface type
-  ' in the surfacelayer.
-  dim hl_map%(hlm_width%,hlm_height%,2)
+' ok, this is a 3d array that holds the track tile type in the piecelayer and the surface type
+' in the surfacelayer.
+dim hl_map%(hlm_width%,hlm_height%,3)
+
+dim tilesetfile$ ' holds the filename of the map tileset
+dim cartilesetfile$ ' holds the filename of the car sprite tileset
+
+dim mapfilename$="testtrack.trk"  ' for now we'll hard code the name of the track file to read in
+
 
 
 
@@ -27,7 +44,9 @@ SUB readmapfile (filename$)
   'make a pair of temp variables that we'll put the size of the map into from the file
   local width%,height%
   local line$
-  ' read in the first 2 values on the first line. Those are teh width and height of the map
+  'first, read in the file name for the tileset to use
+  line input #1,tilesetfile$
+  ' read in the first 2 values on the next line. Those are the width and height of the map
   line input #1,line$
   height% = val(field$(line$,1,","))
   width% = val(field$(line$,2,","))
@@ -39,13 +58,11 @@ SUB readmapfile (filename$)
   
   'ok, now for each cell of the map, read in a number representing the kind of map piece
   ' 0=unused cell
-  ' 1=horizontal straight
-  ' 2=vertical straight
-  ' 3=left turn
-  ' 4=right turn
-  ' 5=criss cross
-  ' 6=horizontal start/finish
-  ' 7=vertical start/finish
+  ' 1=straight
+  ' 2=turn
+  ' 3=criss cross
+  ' 4=start/finish
+  
   local row%
   local column%
   local temp$
@@ -60,6 +77,24 @@ SUB readmapfile (filename$)
       ' covert the string to a number
       tempnum%=val(temp$)
       hl_map%(row%,column%,piecelayer%)=tempnum%
+    next column%
+  next row%
+
+  'ok, now do it again to read in the layer of the map array with the rotation for each piece
+  '0=unrotated
+  '1=rotated clockwise 90 degrees
+  '2=rotated 180 degrees
+  '3=rotated clockwise 270 degrees
+
+  for row% = 0 to height%
+    'read in the line of text
+    line input #1, line$
+    for column% = 0 to width%
+      'chop it up by , and grab the nth value and store it
+      'we need to add 1 to the column because the field command starts with 1 but the array starts with 0
+      temp$=field$(line$,column%+1,",")
+      tempnum%=val(temp$)
+      hl_map%(row%,column%,rotationlayer%)=tempnum%
     next column%
   next row%
 
@@ -80,13 +115,16 @@ SUB readmapfile (filename$)
       hl_map%(row%,column%,surfacelayer%)=tempnum%
     next column%
   next row%
+
   
   ' ok close the file
   close #1
 end sub
-  
-  
-  ' ok this function draws the map
+
+
+
+'------------------
+' ok this function draws the map
 sub displaymap
   ' just a couple temp variables to copy the cell data into
   local piecenum%
@@ -148,12 +186,42 @@ sub displaymap
   
 end sub
   
+
+'------------------
+sub loadtileset()
+  'check that the file exists
+  'load it into the tilesetpage%
+end sub
+
+'------------------
+
+sub loadcars()
+  'check that the file exists
+  'load it into the carspritepage%
+end sub
+
+'------------------
+' this takes the track data from the file and builds up the track graphics from the tileset
+sub buildmap()
+  'loop through the track array cell by cell
+  'get the tile number and the rotation info
+  'copy and rotate the tile as needed from the tilesetpage% and paste into the proper spot on the mappage%
+end sub
+'------------------
+
+
+
+
+
   
 ' main program
-dim mapfilename$="testtrack.trk"  ' for now we'll hard code the name of the track file to read in
   
 ' read in the map
 readmapfile(mapfilename$)
+' load in the map graphics tileset
+loadtileset()
+' build the map
+buildmap()
 ' display it
 displaymap()
 
